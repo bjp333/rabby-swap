@@ -1,0 +1,485 @@
+openapi: 3.1.0
+info:
+  title: FlowRouter Swap API
+  version: "1.0.0"
+  summary: Swap quotes and transactions on Robinhood Chain (chain id 4663).
+  description: |
+    Keyed partner API. Send `X-API-Key` on every request. GET only, no request body, no CORS
+    (a request with an `Origin` header gets 403). Amounts are base-10 integer strings in the token's
+    smallest unit. Native ETH is `0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE` (the zero address is also
+    accepted). The router `0x8Ad60fAE44DD6aaFD8A98B7f25EaD026013efdF2` is `transaction.to` and the
+    token spender. Unknown, repeated or empty query parameters are refused (400). Documented source eea86314b1b897c19aab66b80963d49fce648e43; the running host build was not inspected.
+    Credential/header-file operations are HUMAN OPERATOR ONLY under the workspace rules.
+  contact:
+    name: FlowRouter
+    url: https://flowrouter.xyz
+  license:
+    name: Proprietary
+    identifier: LicenseRef-FlowRouter
+servers:
+  - url: https://api.flowrouter.xyz
+security:
+  - apiKey: []
+tags:
+  - name: swap
+    description: Prices and firm quotes.
+  - name: info
+    description: Token list and service status.
+paths:
+  /v1/4663/price:
+    get:
+      tags: [swap]
+      operationId: getPrice
+      summary: Indicative price (no transaction)
+      description: |
+        Same solver as /quote, without a taker. Market makers are not asked for firm quotes, so a later
+        quote can differ. Equal requests can get the same price for up to 2 s.
+      parameters:
+        - $ref: "#/components/parameters/sellToken"
+        - $ref: "#/components/parameters/buyToken"
+        - $ref: "#/components/parameters/sellAmount"
+        - $ref: "#/components/parameters/slippageBps"
+        - name: taker
+          in: query
+          required: false
+          description: Accepted and ignored by /price.
+          schema:
+            $ref: "#/components/schemas/Address"
+      responses:
+        "200":
+          description: Indicative price.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PriceResponse"
+              example:
+                allowanceTarget: null
+                blockNumber: "90450199"
+                buyAmount: "2422869"
+                buyToken: "0x5fc5360D0400a0Fd4f2af552ADD042D716F1d168"
+                chainId: 4663
+                fees: { flowRouterFee: null, integratorFee: null }
+                gas: "182211"
+                gasPrice: "20272000"
+                indicative: true
+                liquidityAvailable: true
+                minBuyAmount: "2410754"
+                requestId: ce48246a-e7d5-4114-9793-cfb1f883da59
+                route:
+                  fills:
+                    - { from: native, proportionBps: 10000, source: uniswap-v4, to: "0x5fc5360d0400a0fd4f2af552add042d716f1d168" }
+                sellAmount: "1000000000000000"
+                sellToken: "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE"
+                totalNetworkFee: "3693781392000"
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /v1/4663/quote:
+    get:
+      tags: [swap]
+      operationId: getQuote
+      summary: Firm quote with a simulated transaction for one taker
+      parameters:
+        - $ref: "#/components/parameters/sellToken"
+        - $ref: "#/components/parameters/buyToken"
+        - $ref: "#/components/parameters/sellAmount"
+        - $ref: "#/components/parameters/slippageBps"
+        - name: taker
+          in: query
+          required: true
+          description: Sends the transaction and receives the output. Not the zero or native address.
+          schema:
+            $ref: "#/components/schemas/Address"
+        - name: recipient
+          in: query
+          required: false
+          description: Must equal taker in v1.
+          schema:
+            $ref: "#/components/schemas/Address"
+      responses:
+        "200":
+          description: Firm quote.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuoteResponse"
+              example:
+                allowanceTarget: null
+                blockNumber: "90572140"
+                buyAmount: "4838627"
+                buyToken: "0x5fc5360d0400a0fd4f2af552add042d716f1d168"
+                chainId: 4663
+                expiresAt: 1792203723810
+                fees: { flowRouterFee: null, integratorFee: null }
+                gas: "160355"
+                gasPrice: "20022000"
+                issues: { allowance: null, balance: null, invalidSourcesPassed: [], simulationIncomplete: false }
+                liquidityAvailable: true
+                minBuyAmount: "4814433"
+                quoteId: "0x237f283af8c7cedc2c553e36eeed8c3ab9c2f1554d5754790498b0644de6f519"
+                quoteValidUntil: 1792203723810
+                requestId: e3a24c8c-e0d4-4750-8a45-fb7c53f4e975
+                route:
+                  fills:
+                    - { from: native, proportionBps: 10000, source: uniswap-v4, to: "0x5fc5360d0400a0fd4f2af552add042d716f1d168" }
+                sellAmount: "2000000000000000"
+                sellToken: "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE"
+                simulation: { blockNumber: "90572162", funding: canonical_overrides, status: success }
+                totalNetworkFee: "3210627810000"
+                transaction:
+                  data: "0xd46cadbc000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000071afd498d00000000000000000000000000005fc5360d0400a0fd4f2af552add042d716f1d168000000000000000000000000000000000000000000000000000000000049d4e30000000000000000000000000000000000000000000000000000000000497661000000000000000000000000e911f518449ba0011d84b047b4cde50daa081ec1000000000000000000000000000000000000000000000000000000000000012000000000000000000000000010fe1518dfea82748eb576f826784f4ddfb673f200000000000000000000000000000000000000000000000000000000000003e900000000000000000000000000000000000000000000000000000000000002e0000000000000000000000000000000000000000000000000000000000000002054464c570000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000020000000000000000000000005fc5360d0400a0fd4f2af552add042d716f1d168000000000000000000000000000000000000000000000000000000000049766100000000000000000000000000000000000000000000000000000000000000a0000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000015000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000005fc5360d0400a0fd4f2af552add042d716f1d16800000000000000000000000000000000000000000000000000071afd498d0000000000000000000000000000000000000000000000000000000000000000000100000000000000000000000000000000000000000000000000000000000000e000000000000000000000000000000000000000000000000000000000000000e000000000000000000000000000000000000000000000000000000000000000000000000000000000000000005fc5360d0400a0fd4f2af552add042d716f1d16800000000000000000000000000000000000000000000000000000000000000640000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000ffffffffffff"
+                  gas: "263503"
+                  gasPrice: "40088000"
+                  to: "0x8Ad60fAE44DD6aaFD8A98B7f25EaD026013efdF2"
+                  value: "2000000000000000"
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "405": { $ref: "#/components/responses/MethodNotAllowed" }
+        "422": { $ref: "#/components/responses/Unprocessable" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /v1/4663/tokens:
+    get:
+      tags: [info]
+      operationId: getTokens
+      summary: Tokens routed now (ERC-20; native ETH is in nativeToken)
+      responses:
+        "200":
+          description: Token list.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokensResponse"
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
+        "503": { $ref: "#/components/responses/Unavailable" }
+  /v1/health:
+    get:
+      tags: [info]
+      operationId: getHealth
+      summary: Service readiness (HTTP 200 also when not ready)
+      responses:
+        "200":
+          description: Readiness.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+              example: { chainId: 4663, ready: true, router: "0x8Ad60fAE44DD6aaFD8A98B7f25EaD026013efdF2" }
+        "400": { $ref: "#/components/responses/BadRequest" }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+        "500": { $ref: "#/components/responses/Internal" }
+components:
+  securitySchemes:
+    apiKey:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: "fr_live_<24 hex>_<64 hex>. One header only. Server side only."
+  parameters:
+    sellToken:
+      name: sellToken
+      in: query
+      required: true
+      schema:
+        $ref: "#/components/schemas/TokenAddress"
+    buyToken:
+      name: buyToken
+      in: query
+      required: true
+      description: Must differ from sellToken.
+      schema:
+        $ref: "#/components/schemas/TokenAddress"
+    sellAmount:
+      name: sellAmount
+      in: query
+      required: true
+      description: Exact input in the smallest unit of sellToken.
+      schema:
+        type: string
+        pattern: "^[1-9][0-9]{0,77}$"
+    slippageBps:
+      name: slippageBps
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 1000
+        default: 50
+  headers:
+    RetryAfter:
+      description: Seconds to wait before a retry.
+      schema:
+        type: integer
+        minimum: 1
+    RequestId:
+      description: Same value as requestId in the body.
+      schema:
+        type: string
+  responses:
+    BadRequest:
+      description: INVALID_REQUEST or TOKEN_NOT_SUPPORTED.
+      headers:
+        X-Request-Id: { $ref: "#/components/headers/RequestId" }
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+          example: { code: INVALID_REQUEST, message: The request is invalid., requestId: "…" }
+    Unauthorized:
+      description: UNAUTHORIZED (missing, wrong, expired, revoked or repeated key).
+      headers:
+        X-Request-Id: { $ref: "#/components/headers/RequestId" }
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+          example: { code: UNAUTHORIZED, message: A valid X-API-Key header is required., requestId: "…" }
+    Forbidden:
+      description: FORBIDDEN (scope missing, or a browser request with an Origin header).
+      headers:
+        X-Request-Id: { $ref: "#/components/headers/RequestId" }
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    MethodNotAllowed:
+      description: METHOD_NOT_ALLOWED (only GET).
+      headers:
+        Allow:
+          schema: { type: string, const: GET }
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Unprocessable:
+      description: NO_ROUTE, INSUFFICIENT_LIQUIDITY (no partial fills) or SIMULATION_FAILED.
+      headers:
+        X-Request-Id: { $ref: "#/components/headers/RequestId" }
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+          example: { code: NO_ROUTE, message: No executable route is available right now., requestId: "…" }
+    RateLimited:
+      description: RATE_LIMITED (this key). The edge proxy can also send 429 with an HTML body (per-IP limit).
+      headers:
+        Retry-After: { $ref: "#/components/headers/RetryAfter" }
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Unavailable:
+      description: SERVICE_BUSY or SERVICE_UNAVAILABLE.
+      headers:
+        Retry-After: { $ref: "#/components/headers/RetryAfter" }
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Internal:
+      description: INTERNAL.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+  schemas:
+    Address:
+      type: string
+      pattern: "^0x[0-9a-fA-F]{40}$"
+    TokenAddress:
+      type: string
+      pattern: "^0x[0-9a-fA-F]{40}$"
+      description: An ERC-20 address, or 0xEeee…EEeE / the zero address for native ETH.
+    Uint:
+      type: string
+      pattern: "^(0|[1-9][0-9]*)$"
+    Error:
+      type: object
+      required: [code, message, requestId]
+      properties:
+        code:
+          type: string
+          enum:
+            - INVALID_REQUEST
+            - TOKEN_NOT_SUPPORTED
+            - UNAUTHORIZED
+            - FORBIDDEN
+            - NOT_FOUND
+            - METHOD_NOT_ALLOWED
+            - NO_ROUTE
+            - INSUFFICIENT_LIQUIDITY
+            - SIMULATION_FAILED
+            - RATE_LIMITED
+            - SERVICE_BUSY
+            - SERVICE_UNAVAILABLE
+            - INTERNAL
+        message: { type: string }
+        requestId: { type: string }
+    Fill:
+      type: object
+      required: [source, from, to, proportionBps]
+      properties:
+        source: { type: string, description: "Venue id, e.g. uniswap-v4." }
+        from: { type: string, description: "Lower-case token address, or native." }
+        to: { type: string, description: "Lower-case token address, or native." }
+        proportionBps:
+          type: integer
+          minimum: 1
+          maximum: 10000
+          description: Share of all route input of the `from` token that this step takes.
+    IntegratorFee:
+      type: object
+      required: [type, token, amount, bps, beneficiaryShare]
+      properties:
+        type: { type: string, const: volume }
+        token: { type: string, description: buyToken as requested. }
+        amount: { $ref: "#/components/schemas/Uint" }
+        bps: { type: string, description: "Fee R in bps, exact decimal (e.g. 25 or 12.5)." }
+        beneficiaryShare: { type: string, const: "0.8" }
+    FlowRouterFee:
+      type: object
+      required: [type, token, amount]
+      properties:
+        type: { type: string, const: volume }
+        token: { type: string }
+        amount: { $ref: "#/components/schemas/Uint" }
+    Common:
+      type: object
+      required: [chainId, blockNumber, sellToken, buyToken, sellAmount, buyAmount, minBuyAmount, allowanceTarget,
+        fees, route, gas, gasPrice, totalNetworkFee, liquidityAvailable, requestId]
+      properties:
+        chainId: { type: integer, const: 4663 }
+        blockNumber: { $ref: "#/components/schemas/Uint" }
+        sellToken: { type: string, description: As requested. }
+        buyToken: { type: string, description: As requested. }
+        sellAmount: { $ref: "#/components/schemas/Uint" }
+        buyAmount:
+          allOf: [{ $ref: "#/components/schemas/Uint" }]
+          description: The most the taker receives (surplus above it is not paid to the taker). Net of the partner fee.
+        minBuyAmount:
+          allOf: [{ $ref: "#/components/schemas/Uint" }]
+          description: On-chain minimum. Net of the partner fee.
+        allowanceTarget:
+          oneOf:
+            - { $ref: "#/components/schemas/Address" }
+            - { type: "null" }
+          description: The router; null when selling native ETH.
+        fees:
+          description: Always an object. For zero-fee surplus/attribution codes both fields are null; never fees=null.
+          example: { integratorFee: null, flowRouterFee: null }
+          type: object
+          required: [integratorFee, flowRouterFee]
+          properties:
+            integratorFee:
+              oneOf: [{ $ref: "#/components/schemas/IntegratorFee" }, { type: "null" }]
+            flowRouterFee:
+              oneOf: [{ $ref: "#/components/schemas/FlowRouterFee" }, { type: "null" }]
+        route:
+          type: object
+          required: [fills]
+          properties:
+            fills:
+              type: array
+              items: { $ref: "#/components/schemas/Fill" }
+        gas:
+          allOf: [{ $ref: "#/components/schemas/Uint" }]
+          description: Expected gas used (simulation).
+        gasPrice:
+          allOf: [{ $ref: "#/components/schemas/Uint" }]
+          description: Gas price estimate, wei per gas.
+        totalNetworkFee:
+          allOf: [{ $ref: "#/components/schemas/Uint" }]
+          description: gas x gasPrice, wei.
+        liquidityAvailable: { type: boolean, const: true }
+        requestId: { type: string }
+    PriceResponse:
+      allOf:
+        - $ref: "#/components/schemas/Common"
+        - type: object
+          required: [indicative]
+          properties:
+            indicative: { type: boolean, const: true }
+    QuoteResponse:
+      allOf:
+        - $ref: "#/components/schemas/Common"
+        - type: object
+          required: [quoteId, transaction, issues, simulation, expiresAt, quoteValidUntil]
+          properties:
+            quoteId: { type: string, pattern: "^0x[0-9a-f]{64}$" }
+            transaction:
+              type: object
+              required: [to, data, value, gas, gasPrice]
+              properties:
+                to: { $ref: "#/components/schemas/Address" }
+                data: { type: string, pattern: "^0x[0-9a-f]*$", description: "FlowRouter.swap calldata, selector 0xd46cadbc." }
+                value: { $ref: "#/components/schemas/Uint" }
+                gas:
+                  allOf: [{ $ref: "#/components/schemas/Uint" }]
+                  description: Gas LIMIT to send unchanged (up to 32,000,000). Only gas used is charged.
+                gasPrice:
+                  allOf: [{ $ref: "#/components/schemas/Uint" }]
+                  description: Fee cap (maxFeePerGas), not the expected price.
+            issues:
+              type: object
+              required: [allowance, balance, simulationIncomplete, invalidSourcesPassed]
+              properties:
+                allowance:
+                  oneOf:
+                    - type: object
+                      required: [actual, spender]
+                      properties:
+                        actual: { $ref: "#/components/schemas/Uint" }
+                        spender: { $ref: "#/components/schemas/Address" }
+                    - { type: "null" }
+                balance:
+                  oneOf:
+                    - type: object
+                      required: [token, actual, expected]
+                      properties:
+                        token: { type: string }
+                        actual: { $ref: "#/components/schemas/Uint" }
+                        expected: { $ref: "#/components/schemas/Uint" }
+                    - { type: "null" }
+                simulationIncomplete: { type: boolean, const: false }
+                invalidSourcesPassed: { type: array, maxItems: 0, items: { type: string } }
+            simulation:
+              type: object
+              required: [status, blockNumber, funding]
+              properties:
+                status: { type: string, const: success }
+                blockNumber: { $ref: "#/components/schemas/Uint" }
+                funding: { type: string, const: canonical_overrides }
+            expiresAt: { type: integer, description: "Epoch ms; send the transaction before it (<= 30 s)." }
+            quoteValidUntil: { type: integer, description: Same as expiresAt. }
+    Token:
+      type: object
+      required: [address, symbol, name, decimals, logoURI, provenance]
+      properties:
+        address: { $ref: "#/components/schemas/Address" }
+        symbol: { type: string }
+        name: { type: string }
+        decimals: { type: integer, minimum: 0, maximum: 36 }
+        logoURI: { type: "null" }
+        provenance: { type: string, enum: [curated, automatic-admission] }
+    TokensResponse:
+      type: object
+      required: [chainId, nativeToken, tokens]
+      properties:
+        chainId: { type: integer, const: 4663 }
+        nativeToken: { type: string, const: "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE" }
+        tokens:
+          type: array
+          items: { $ref: "#/components/schemas/Token" }
+    HealthResponse:
+      type: object
+      required: [chainId, ready, router]
+      properties:
+        chainId: { type: integer, const: 4663 }
+        ready: { type: boolean }
+        router: { $ref: "#/components/schemas/Address" }
